@@ -76,7 +76,7 @@ All trained on engineered features like `IR/LOI` ratio, `IR/Completes`, and cate
 
 ## 🙋‍♂️ Author
 
-Developed by **Shriyansh Singh** – [LinkedIn](https://www.linkedin.com/) | [GitHub](https://github.com/)
+Developed by **Shriyansh Singh**, **Yatharth Kapadia**, **Mayur Jaisinghani**, **Sakshi Gatyan**, **Tanya Jain**
 
 ---
 
