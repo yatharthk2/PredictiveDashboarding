@@ -1,0 +1,28 @@
+# Bytecode and cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.env/
+venv/
+env/
+
+# IDE settings
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Excel temp backup files
+~$*.xlsx
+
+# Log files
+*.log
+
+# Streamlit cache
+.streamlit/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
