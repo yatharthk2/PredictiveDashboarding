@@ -1,0 +1,103 @@
+# CPI Dashboard Installation Guide
+
+Based on the error messages you've encountered, we need to make some adjustments to get the Streamlit application running. This guide provides step-by-step instructions to fix the issues.
+
+## Step 1: Fix the Installation Issues
+
+The main problem is with the `shap` package, which is failing to build because of CUDA dependencies. We'll modify our approach to avoid this issue.
+
+1. First, deactivate your current virtual environment if it's still active:
+```
+deactivate
+```
+
+2. Delete the existing virtual environment folder:
+```
+Remove-Item -Recurse -Force venv
+```
+
+3. Create a new virtual environment:
+```
+python -m venv venv
+```
+
+4. Activate the new virtual environment:
+```
+.\venv\Scripts\Activate.ps1
+```
+
+5. If you encounter an execution policy error, run:
+```
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+```
+   Then try activating again.
+
+6. Upgrade pip:
+```
+python -m pip install --upgrade pip
+```
+
+7. Install the modified requirements (without shap):
+```
+pip install -r requirements-modified.txt
+```
+
+## Step 2: Use the Modified Application Code
+
+The modified application is designed to run without the `shap` package, which was causing issues.
+
+1. Make sure you've saved the modified application code to a file named `streamlit-app-modified.py` in your project folder.
+
+2. Run the modified application:
+```
+python -m streamlit run streamlit-app-modified.py
+```
+
+## Step 3: Troubleshooting Other Potential Issues
+
+If you encounter other issues, here are some common solutions:
+
+### Issue: File not found errors
+- Make sure all data files have the correct names:
+  - `invoiced_jobs_this_year_20240912T18_36_36.439126Z.xlsx`
+  - `DealItemReportLOST.xlsx`
+  - Rename files if necessary to match exactly what the code is looking for
+
+### Issue: Excel file reading errors
+- Try upgrading openpyxl to the latest version:
+```
+pip install --upgrade openpyxl
+```
+
+### Issue: Memory errors
+- Streamlit may require more memory for large datasets. Try running with increased memory:
+```
+python -m streamlit run streamlit-app-modified.py --server.maxMessageSize=200
+```
+
+### Issue: Other package errors
+If you encounter any other package-specific errors, you can install them individually:
+```
+pip install [package-name]
+```
+
+## Step 4: Verifying Installation Success
+
+Once the application is running successfully, you should see:
+
+1. A message in the terminal with a URL (typically http://localhost:8501)
+2. A browser window automatically opening with the Streamlit application
+3. The dashboard with multiple tabs: Overview, CPI Analysis, CPI Prediction, and Insights & Recommendations
+
+## Additional Resources
+
+If you continue to experience issues, you can try:
+
+1. Installing Streamlit directly from their official repository:
+```
+pip install git+https://github.com/streamlit/streamlit.git
+```
+
+2. Checking Streamlit's official troubleshooting guide: https://docs.streamlit.io/knowledge-base/using-streamlit/troubleshooting
+
+3. Verifying Python version compatibility (Streamlit works best with Python 3.7-3.11)
