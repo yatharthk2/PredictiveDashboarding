@@ -8,15 +8,14 @@ import pandas as pd
 import streamlit as st
 from typing import Dict, Any
 import logging
+from config import INVOICED_JOBS_FILE, LOST_DEALS_FILE, ACCOUNT_SEGMENT_FILE
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Set up file paths
-INVOICED_JOBS_FILE = "invoiced_jobs_this_year_20240912T18_36_36.439126Z.xlsx"
-LOST_DEALS_FILE = "DealItemReportLOST.xlsx"
-ACCOUNT_SEGMENT_FILE = "Account+List+with+Segment.csv"
+
 
 @st.cache_data(ttl=3600)  # Cache data for 1 hour
 def load_data() -> Dict[str, pd.DataFrame]:
@@ -113,7 +112,7 @@ def load_data() -> Dict[str, pd.DataFrame]:
         lost_df['Type'] = 'Lost'
         
         # Try to load account segment data
-        client_segments = None
+        
         if os.path.exists(ACCOUNT_SEGMENT_FILE):
             logger.info(f"Loading account segment data from {ACCOUNT_SEGMENT_FILE}")
             try:
@@ -123,6 +122,15 @@ def load_data() -> Dict[str, pd.DataFrame]:
                     'Account Name': 'Client',
                     'Client Segment Type': 'Segment'
                 })
+                
+                # Log Segment distribution before merging
+                logger.info(f"Segment distribution before merging: {client_segments['Segment'].value_counts().to_dict()}")
+
+                # Clean up Client names for better matching
+                client_segments['Client'] = client_segments['Client'].str.strip().str.upper()
+                won_df['Client'] = won_df['Client'].str.strip().str.upper()
+                lost_df['Client'] = lost_df['Client'].str.strip().str.upper()
+
                 
                 # Merge segments with won and lost dataframes
                 won_df = pd.merge(
@@ -138,6 +146,11 @@ def load_data() -> Dict[str, pd.DataFrame]:
                     how='left'
                 )
                 
+                # Log merge success rate
+                won_match = won_df['Segment'].notna().mean() * 100
+                lost_match = lost_df['Segment'].notna().mean() * 100
+                logger.info(f"Won deals segment match rate: {won_match:.2f}%")
+                logger.info(f"Lost deals segment match rate: {lost_match:.2f}%")
                 logger.info("Successfully merged client segment data")
             except Exception as e:
                 logger.warning(f"Failed to load or merge segment data: {e}")

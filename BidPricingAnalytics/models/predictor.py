@@ -1,220 +1,4 @@
-        
-        # Final pricing recommendation based on all factors
-        total_adjustment = 0
-        
-        # IR adjustment
-        if ir < 20:
-            total_adjustment += 17.5  # Midpoint of 15-20%
-        elif ir < 50:
-            total_adjustment += 7.5   # Midpoint of 5-10%
-        
-        # LOI adjustment
-        if loi > 20:
-            total_adjustment += 17.5  # Midpoint of 15-20%
-        elif loi > 10:
-            total_adjustment += 7.5   # Midpoint of 5-10%
-        
-        # Sample size adjustment
-        if completes > 1000:
-            total_adjustment -= 17.5  # Midpoint of 15-20%
-        elif completes > 500:
-            total_adjustment -= 12.5  # Midpoint of 10-15%
-        elif completes > 100:
-            total_adjustment -= 7.5   # Midpoint of 5-10%
-        
-        # Calculate adjusted CPI
-        base_cpi = predicted_cpi
-        adjusted_cpi = base_cpi * (1 + total_adjustment / 100)
-        
-        strategy.append("")
-        strategy.append(f"**Net Adjustment:** {total_adjustment:+.1f}%")
-        strategy.append(f"**Base CPI:** ${base_cpi:.2f}")
-        strategy.append(f"**Recommended CPI:** ${adjusted_cpi:.2f}")
-        
-        # Add competitive analysis
-        strategy.append("")
-        strategy.append("**Competitive Positioning:**")
-        
-        if len(similar_won) > 0 and len(similar_lost) > 0:
-            won_avg = similar_won['CPI'].mean()
-            lost_avg = similar_lost['CPI'].mean()
-            
-            if adjusted_cpi <= won_avg:
-                strategy.append(f"- This recommended CPI (${adjusted_cpi:.2f}) is below the average of similar won bids (${won_avg:.2f}), suggesting a highly competitive position.")
-            elif adjusted_cpi <= (won_avg + lost_avg) / 2:
-                strategy.append(f"- This recommended CPI (${adjusted_cpi:.2f}) is above the average of similar won bids (${won_avg:.2f}) but below the midpoint, suggesting a moderately competitive position.")
-            elif adjusted_cpi <= lost_avg:
-                strategy.append(f"- This recommended CPI (${adjusted_cpi:.2f}) is closer to the average of similar lost bids (${lost_avg:.2f}), which may reduce win probability. Consider additional value-add services to justify this premium.")
-            else:
-                strategy.append(f"- This recommended CPI (${adjusted_cpi:.2f}) is above the average of similar lost bids (${lost_avg:.2f}), suggesting it may be too high to be competitive unless there are unique selling points.")
-        
-        # Join the strategy text with line breaks
-        return "\n".join(strategy)
-    
-    except Exception as e:
-        logger.error(f"Error in get_detailed_pricing_strategy: {e}", exc_info=True)
-        return "Unable to generate detailed pricing strategy due to an error."
-
-def simulate_win_probability(predicted_cpi: float, user_input: Dict[str, float],
-                          won_data: pd.DataFrame, lost_data: pd.DataFrame) -> Dict[str, float]:
-    """
-    Simulate the probability of winning a bid based on the predicted CPI.
-    
-    Args:
-        predicted_cpi (float): Predicted CPI value
-        user_input (Dict[str, float]): Dictionary of user input values
-        won_data (pd.DataFrame): DataFrame of Won bids
-        lost_data (pd.DataFrame): DataFrame of Lost bids
-    
-    Returns:
-        Dict[str, float]: Dictionary of win probability metrics
-    """
-    try:
-        # Combine won and lost data
-        combined_data = pd.concat([
-            won_data.assign(Won=1),
-            lost_data.assign(Won=0)
-        ], ignore_index=True)
-        
-        # Calculate CPI percentiles
-        percentiles = [10, 20, 30, 40, 50, 60, 70, 80, 90]
-        cpi_percentiles = {p: combined_data['CPI'].quantile(p/100) for p in percentiles}
-        
-        # Find where the predicted CPI falls in the distribution
-        cpi_percentile = 0
-        for p in sorted(percentiles):
-            if predicted_cpi <= cpi_percentiles[p]:
-                cpi_percentile = p
-                break
-        
-        if cpi_percentile == 0:
-            cpi_percentile = 100  # Above all percentiles
-        
-        # Calculate win probability based on percentile
-        # Lower percentile (lower price) = higher win probability
-        wins_by_percentile = {}
-        for p in percentiles:
-            below_p = combined_data[combined_data['CPI'] <= combined_data['CPI'].quantile(p/100)]
-            if len(below_p) > 0:
-                wins_by_percentile[p] = below_p['Won'].mean() * 100
-            else:
-                wins_by_percentile[p] = 0
-        
-        # Get win probability for the predicted CPI
-        if cpi_percentile in percentiles:
-            win_probability = wins_by_percentile[cpi_percentile]
-        else:
-            # If predicted CPI is above all percentiles, use lowest win rate
-            win_probability = min(wins_by_percentile.values())
-        
-        # Return results
-        return {
-            'cpi_percentile': cpi_percentile,
-            'win_probability': win_probability,
-            'percentile_data': {
-                'percentiles': percentiles,
-                'cpi_values': list(cpi_percentiles.values()),
-                'win_rates': list(wins_by_percentile.values())
-            }
-        }
-    
-    except Exception as e:
-        logger.error(f"Error in simulate_win_probability: {e}", exc_info=True)
-        return {}
-
-if __name__ == "__main__":
-    # Test prediction functions with sample data
-    try:
-        import pandas as pd
-        import numpy as np
-        
-        # Create sample models
-        class DummyModel:
-            def predict(self, X):
-                # Simple prediction based on IR and LOI
-                return np.array([X['IR'].values[0] * 0.1 + X['LOI'].values[0] * 0.3])
-        
-        models = {
-            'Linear Regression': DummyModel(),
-            'Random Forest': DummyModel(),
-            'Gradient Boosting': DummyModel()
-        }
-        
-        # Create sample user input
-        user_input = {
-            'IR': 30,
-            'LOI': 15,
-            'Completes': 500
-        }
-        
-        # Define feature names
-        feature_names = ['IR', 'LOI', 'Completes', 'IR_LOI_Ratio', 
-                         'IR_Completes_Ratio', 'Type_Won']
-        
-        # Test predict_cpi
-        print("Testing predict_cpi...")
-        predictions = predict_cpi(models, user_input, feature_names)
-        print(f"Predictions: {predictions}")
-        
-        # Test get_prediction_metrics
-        print("\nTesting get_prediction_metrics...")
-        metrics = get_prediction_metrics(predictions)
-        print(f"Metrics: {metrics}")
-        
-        # Test get_recommendation
-        print("\nTesting get_recommendation...")
-        recommendation = get_recommendation(7.5, 6.0, 9.0)
-        print(f"Recommendation: {recommendation}")
-        
-        # Create sample won and lost data
-        np.random.seed(42)
-        n_samples = 50
-        
-        won_data = pd.DataFrame({
-            'CPI': np.random.uniform(5, 8, n_samples),
-            'IR': np.random.uniform(20, 80, n_samples),
-            'LOI': np.random.uniform(5, 25, n_samples),
-            'Completes': np.random.uniform(100, 1000, n_samples)
-        })
-        
-        lost_data = pd.DataFrame({
-            'CPI': np.random.uniform(7, 10, n_samples),
-            'IR': np.random.uniform(10, 70, n_samples),
-            'LOI': np.random.uniform(10, 30, n_samples),
-            'Completes': np.random.uniform(50, 800, n_samples)
-        })
-        
-        # Test get_detailed_pricing_strategy
-        print("\nTesting get_detailed_pricing_strategy...")
-        strategy = get_detailed_pricing_strategy(7.5, user_input, won_data, lost_data)
-        print(strategy)
-        
-        # Test simulate_win_probability
-        print("\nTesting simulate_win_probability...")
-        win_prob = simulate_win_probability(7.5, user_input, won_data, lost_data)
-        print(f"Win Probability: {win_prob['win_probability']:.1f}%")
-        print(f"CPI Percentile: {win_prob['cpi_percentile']}")
-        
-        print("\nAll tests completed successfully")
-        
-    except Exception as e:
-        print(f"Error testing predictor: {e}")
- duration.")
-        elif loi > 10:
-            strategy.append("- **Medium LOI Adjustment:** Add a premium of 5-10% to the base CPI.")
-        else:
-            strategy.append("- **Short LOI Adjustment:** No LOI premium needed as the survey is short.")
-        
-        # Sample size adjustment
-        if completes > 1000:
-            strategy.append("- **Large Sample Discount:** Offer a 15-20% volume discount due to the very large sample size.")
-        elif completes > 500:
-            strategy.append("- **Medium Sample Discount:** Offer a 10-15% volume discount due to the large sample size.")
-        elif completes > 100:
-            strategy.append("- **Small Sample Discount:** Offer a 5-10% volume discount.")
-        else:
-            strategy.append("- **No Sample Discount:** The sample size is too small to qualify for a volume discount.")
-        """
+"""
 ML model prediction functionality for the CPI Analysis & Prediction Dashboard.
 Includes functions for making predictions and generating recommendations.
 """
@@ -455,4 +239,219 @@ def get_detailed_pricing_strategy(predicted_cpi: float, user_input: Dict[str, fl
         
         # LOI-based adjustment
         if loi > 20:
-            strategy.append("- **Long LOI Adjustment:** Add a premium of 15-20% to compensate for the longer survey
+            strategy.append("- **Long LOI Adjustment:** Add a premium of 15-20% to compensate for the longer survey duration.")
+        elif loi > 10:
+            strategy.append("- **Medium LOI Adjustment:** Add a premium of 5-10% to the base CPI.")
+        else:
+            strategy.append("- **Short LOI Adjustment:** No LOI premium needed as the survey is short.")
+        
+        # Sample size adjustment
+        if completes > 1000:
+            strategy.append("- **Large Sample Discount:** Offer a 15-20% volume discount due to the very large sample size.")
+        elif completes > 500:
+            strategy.append("- **Medium Sample Discount:** Offer a 10-15% volume discount due to the large sample size.")
+        elif completes > 100:
+            strategy.append("- **Small Sample Discount:** Offer a 5-10% volume discount.")
+        else:
+            strategy.append("- **No Sample Discount:** The sample size is too small to qualify for a volume discount.")
+        
+        # Final pricing recommendation based on all factors
+        total_adjustment = 0
+
+        # IR adjustment
+        if ir < 20:
+            total_adjustment += 17.5  # Midpoint of 15-20%
+        elif ir < 50:
+            total_adjustment += 7.5   # Midpoint of 5-10%
+
+        # LOI adjustment
+        if loi > 20:
+            total_adjustment += 17.5  # Midpoint of 15-20%
+        elif loi > 10:
+            total_adjustment += 7.5   # Midpoint of 5-10%
+
+        # Sample size adjustment
+        if completes > 1000:
+            total_adjustment -= 17.5  # Midpoint of 15-20%
+        elif completes > 500:
+            total_adjustment -= 12.5  # Midpoint of 10-15%
+        elif completes > 100:
+            total_adjustment -= 7.5   # Midpoint of 5-10%
+
+        # Calculate adjusted CPI
+        base_cpi = predicted_cpi
+        adjusted_cpi = base_cpi * (1 + total_adjustment / 100)
+
+        strategy.append("")
+        strategy.append(f"**Net Adjustment:** {total_adjustment:+.1f}%")
+        strategy.append(f"**Base CPI:** ${base_cpi:.2f}")
+        strategy.append(f"**Recommended CPI:** ${adjusted_cpi:.2f}")
+
+        # Add competitive analysis
+        strategy.append("")
+        strategy.append("**Competitive Positioning:**")
+
+        if len(similar_won) > 0 and len(similar_lost) > 0:
+            won_avg = similar_won['CPI'].mean()
+            lost_avg = similar_lost['CPI'].mean()
+            
+            if adjusted_cpi <= won_avg:
+                strategy.append(f"- This recommended CPI (${adjusted_cpi:.2f}) is below the average of similar won bids (${won_avg:.2f}), suggesting a highly competitive position.")
+            elif adjusted_cpi <= (won_avg + lost_avg) / 2:
+                strategy.append(f"- This recommended CPI (${adjusted_cpi:.2f}) is above the average of similar won bids (${won_avg:.2f}) but below the midpoint, suggesting a moderately competitive position.")
+            elif adjusted_cpi <= lost_avg:
+                strategy.append(f"- This recommended CPI (${adjusted_cpi:.2f}) is closer to the average of similar lost bids (${lost_avg:.2f}), which may reduce win probability. Consider additional value-add services to justify this premium.")
+            else:
+                strategy.append(f"- This recommended CPI (${adjusted_cpi:.2f}) is above the average of similar lost bids (${lost_avg:.2f}), suggesting it may be too high to be competitive unless there are unique selling points.")
+
+        # Join the strategy text with line breaks
+        return "\n".join(strategy)
+    
+    except Exception as e:
+        logger.error(f"Error in get_detailed_pricing_strategy: {e}", exc_info=True)
+        return "Unable to generate detailed pricing strategy due to an error."
+
+def simulate_win_probability(predicted_cpi: float, user_input: Dict[str, float],
+                          won_data: pd.DataFrame, lost_data: pd.DataFrame) -> Dict[str, float]:
+    """
+    Simulate the probability of winning a bid based on the predicted CPI.
+    
+    Args:
+        predicted_cpi (float): Predicted CPI value
+        user_input (Dict[str, float]): Dictionary of user input values
+        won_data (pd.DataFrame): DataFrame of Won bids
+        lost_data (pd.DataFrame): DataFrame of Lost bids
+    
+    Returns:
+        Dict[str, float]: Dictionary of win probability metrics
+    """
+    try:
+        # Combine won and lost data
+        combined_data = pd.concat([
+            won_data.assign(Won=1),
+            lost_data.assign(Won=0)
+        ], ignore_index=True)
+        
+        # Calculate CPI percentiles
+        percentiles = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+        cpi_percentiles = {p: combined_data['CPI'].quantile(p/100) for p in percentiles}
+        
+        # Find where the predicted CPI falls in the distribution
+        cpi_percentile = 0
+        for p in sorted(percentiles):
+            if predicted_cpi <= cpi_percentiles[p]:
+                cpi_percentile = p
+                break
+        
+        if cpi_percentile == 0:
+            cpi_percentile = 100  # Above all percentiles
+        
+        # Calculate win probability based on percentile
+        # Lower percentile (lower price) = higher win probability
+        wins_by_percentile = {}
+        for p in percentiles:
+            below_p = combined_data[combined_data['CPI'] <= combined_data['CPI'].quantile(p/100)]
+            if len(below_p) > 0:
+                wins_by_percentile[p] = below_p['Won'].mean() * 100
+            else:
+                wins_by_percentile[p] = 0
+        
+        # Get win probability for the predicted CPI
+        if cpi_percentile in percentiles:
+            win_probability = wins_by_percentile[cpi_percentile]
+        else:
+            # If predicted CPI is above all percentiles, use lowest win rate
+            win_probability = min(wins_by_percentile.values())
+        
+        # Return results
+        return {
+            'cpi_percentile': cpi_percentile,
+            'win_probability': win_probability,
+            'percentile_data': {
+                'percentiles': percentiles,
+                'cpi_values': list(cpi_percentiles.values()),
+                'win_rates': list(wins_by_percentile.values())
+            }
+        }
+    
+    except Exception as e:
+        logger.error(f"Error in simulate_win_probability: {e}", exc_info=True)
+        return {}
+
+if __name__ == "__main__":
+    # Test prediction functions with sample data
+    try:
+        import pandas as pd
+        import numpy as np
+        
+        # Create sample models
+        class DummyModel:
+            def predict(self, X):
+                # Simple prediction based on IR and LOI
+                return np.array([X['IR'].values[0] * 0.1 + X['LOI'].values[0] * 0.3])
+        
+        models = {
+            'Linear Regression': DummyModel(),
+            'Random Forest': DummyModel(),
+            'Gradient Boosting': DummyModel()
+        }
+        
+        # Create sample user input
+        user_input = {
+            'IR': 30,
+            'LOI': 15,
+            'Completes': 500
+        }
+        
+        # Define feature names
+        feature_names = ['IR', 'LOI', 'Completes', 'IR_LOI_Ratio', 
+                         'IR_Completes_Ratio', 'Type_Won']
+        
+        # Test predict_cpi
+        print("Testing predict_cpi...")
+        predictions = predict_cpi(models, user_input, feature_names)
+        print(f"Predictions: {predictions}")
+        
+        # Test get_prediction_metrics
+        print("\nTesting get_prediction_metrics...")
+        metrics = get_prediction_metrics(predictions)
+        print(f"Metrics: {metrics}")
+        
+        # Test get_recommendation
+        print("\nTesting get_recommendation...")
+        recommendation = get_recommendation(7.5, 6.0, 9.0)
+        print(f"Recommendation: {recommendation}")
+        
+        # Create sample won and lost data
+        np.random.seed(42)
+        n_samples = 50
+        
+        won_data = pd.DataFrame({
+            'CPI': np.random.uniform(5, 8, n_samples),
+            'IR': np.random.uniform(20, 80, n_samples),
+            'LOI': np.random.uniform(5, 25, n_samples),
+            'Completes': np.random.uniform(100, 1000, n_samples)
+        })
+        
+        lost_data = pd.DataFrame({
+            'CPI': np.random.uniform(7, 10, n_samples),
+            'IR': np.random.uniform(10, 70, n_samples),
+            'LOI': np.random.uniform(10, 30, n_samples),
+            'Completes': np.random.uniform(50, 800, n_samples)
+        })
+        
+        # Test get_detailed_pricing_strategy
+        print("\nTesting get_detailed_pricing_strategy...")
+        strategy = get_detailed_pricing_strategy(7.5, user_input, won_data, lost_data)
+        print(strategy)
+        
+        # Test simulate_win_probability
+        print("\nTesting simulate_win_probability...")
+        win_prob = simulate_win_probability(7.5, user_input, won_data, lost_data)
+        print(f"Win Probability: {win_prob['win_probability']:.1f}%")
+        print(f"CPI Percentile: {win_prob['cpi_percentile']}")
+        
+        print("\nAll tests completed successfully")
+        
+    except Exception as e:
+        print(f"Error testing predictor: {e}")

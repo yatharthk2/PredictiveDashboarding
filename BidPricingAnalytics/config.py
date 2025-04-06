@@ -7,13 +7,13 @@ import os
 from pathlib import Path
 
 # Project paths
-BASE_DIR = Path(__file__).parent
-DATA_DIR = os.path.join(BASE_DIR, "data")
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
 
 # Data files
-INVOICED_JOBS_FILE = os.path.join(DATA_DIR, "invoiced_jobs_this_year_20240912T18_36_36.439126Z.xlsx")
-LOST_DEALS_FILE = os.path.join(DATA_DIR, "DealItemReportLOST.xlsx")
-ACCOUNT_SEGMENT_FILE = os.path.join(DATA_DIR, "Account+List+with+Segment.csv")
+INVOICED_JOBS_FILE = DATA_DIR / "invoiced_jobs_this_year_20240912T18_36_36.439126Z.xlsx"
+LOST_DEALS_FILE = DATA_DIR / "DealItemReportLOST.xlsx"
+ACCOUNT_SEGMENT_FILE = DATA_DIR / "Account+List+with+Segment.csv"
 
 # App configuration
 APP_TITLE = "CPI Analysis & Prediction Dashboard"

@@ -70,7 +70,7 @@ def show_analysis(won_data: pd.DataFrame, lost_data: pd.DataFrame, combined_data
             
             # Create and display CPI histogram comparison
             fig = create_cpi_histogram_comparison(won_data, lost_data)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key='plot_1')
             
             # Add CPI statistics
             col1, col2 = st.columns(2)
@@ -133,13 +133,13 @@ def show_analysis(won_data: pd.DataFrame, lost_data: pd.DataFrame, combined_data
             
             # Create and display CPI vs IR scatter plot
             fig = create_cpi_vs_ir_scatter(won_data, lost_data)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key='plot_2')
             
             # Create and display CPI by IR Bin bar chart
             st.subheader("Average CPI by IR Bin")
             fig = create_bar_chart_by_bin(won_data, lost_data, 'IR_Bin', 'CPI',
                                         title='Average CPI by Incidence Rate Bin')
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key='plot_3')
             
             # Add interpretation
             with st.expander("📊 Interpretation"):
@@ -246,16 +246,16 @@ def show_analysis(won_data: pd.DataFrame, lost_data: pd.DataFrame, combined_data
                 plot_bgcolor='rgba(255,255,255,1)',
                 paper_bgcolor='rgba(255,255,255,1)',
                 xaxis=dict(gridcolor='rgba(0,0,0,0.1)'),
-                yaxis=dict(gridcolor='rgba(0,0,0,0.1)', tickprefix=')
+                yaxis=dict(gridcolor='rgba(0,0,0,0.1)', tickprefix='$')
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key='plot_4')
             
             # Create and display CPI by LOI Bin bar chart
             st.subheader("Average CPI by LOI Bin")
             fig = create_bar_chart_by_bin(won_data, lost_data, 'LOI_Bin', 'CPI',
                                         title='Average CPI by Length of Interview Bin')
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key='plot_5')
             
             # Add interpretation
             with st.expander("📊 Interpretation"):
@@ -368,16 +368,16 @@ def show_analysis(won_data: pd.DataFrame, lost_data: pd.DataFrame, combined_data
                 plot_bgcolor='rgba(255,255,255,1)',
                 paper_bgcolor='rgba(255,255,255,1)',
                 xaxis=dict(gridcolor='rgba(0,0,0,0.1)', type='log'),  # Log scale for better visualization
-                yaxis=dict(gridcolor='rgba(0,0,0,0.1)', tickprefix=')
+                yaxis=dict(gridcolor='rgba(0,0,0,0.1)', tickprefix='$')
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key='plot_6')
             
             # Create and display CPI by Completes Bin bar chart
             st.subheader("Average CPI by Sample Size Bin")
             fig = create_bar_chart_by_bin(won_data, lost_data, 'Completes_Bin', 'CPI',
                                         title='Average CPI by Sample Size Bin')
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key='plot_7')
             
             # Add interpretation
             with st.expander("📊 Interpretation"):
@@ -439,7 +439,7 @@ def show_analysis(won_data: pd.DataFrame, lost_data: pd.DataFrame, combined_data
                     "Won Deals: Average CPI by IR and LOI",
                     HEATMAP_COLORSCALE_WON
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, key='plot_8')
             
             with col2:
                 # Lost deals heatmap
@@ -448,7 +448,7 @@ def show_analysis(won_data: pd.DataFrame, lost_data: pd.DataFrame, combined_data
                     "Lost Deals: Average CPI by IR and LOI",
                     HEATMAP_COLORSCALE_LOST
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, key='plot_9')
             
             # Create a differential heatmap
             st.subheader("CPI Differential: Lost vs. Won")
@@ -499,7 +499,7 @@ def show_analysis(won_data: pd.DataFrame, lost_data: pd.DataFrame, combined_data
                 title_standoff=25
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key='plot_10')
             
             # Add interpretation
             with st.expander("📊 Interpretation"):
@@ -590,7 +590,7 @@ def show_analysis(won_data: pd.DataFrame, lost_data: pd.DataFrame, combined_data
                 )
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key='plot_11')
             
             # Add interpretation
             with st.expander("📊 Interpretation"):

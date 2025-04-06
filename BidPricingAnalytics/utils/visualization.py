@@ -13,6 +13,7 @@ accessibility and data visualization literacy, including:
 """
 
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -413,7 +414,7 @@ def create_cpi_vs_ir_scatter(won_data: pd.DataFrame, lost_data: pd.DataFrame, ad
             yaxis=dict(
                 gridcolor='rgba(0,0,0,0.1)',
                 gridwidth=1,
-                tickprefix='  # Add dollar sign to y-axis
+                tickprefix='$',  # Add dollar sign to y-axis
             ),
             # Improved accessibility with contrasting colors
             plot_bgcolor='rgba(255,255,255,1)',
@@ -529,7 +530,7 @@ def create_bar_chart_by_bin(won_data: pd.DataFrame, lost_data: pd.DataFrame, bin
             yaxis=dict(
                 gridcolor='rgba(0,0,0,0.1)',
                 gridwidth=1,
-                tickprefix=' if value_column == 'CPI' else ''  # Add dollar sign if CPI
+                tickprefix='$' if value_column == 'CPI' else '',  # Add dollar sign if CPI
             ),
             # Improved accessibility with contrasting colors
             plot_bgcolor='rgba(255,255,255,1)',
@@ -585,64 +586,115 @@ def create_heatmap(pivot_data: pd.DataFrame, title: str, colorscale: str = None)
         go.Figure: Plotly figure object
     """
     try:
-        # Use default colorscale if not specified
-        if colorscale is None:
-            colorscale = HEATMAP_COLORSCALE_WON
-            
-        # Create heatmap
-        fig = px.imshow(
-            pivot_data,
-            labels=dict(x="LOI Bin", y="IR Bin", color="Avg CPI ($)"),
-            x=pivot_data.columns,
-            y=pivot_data.index,
-            title=title,
-            color_continuous_scale=colorscale,
-            aspect="auto",
-            text_auto='.2f'  # Show values on cells
-        )
-        
-        # Update layout
-        fig.update_layout(
-            height=600,
-            coloraxis_colorbar=dict(
-                title="Avg CPI ($)",
-                tickprefix="$",
-                len=0.75
-            ),
-            # Improved accessibility
-            plot_bgcolor='rgba(255,255,255,1)',
-            paper_bgcolor='rgba(255,255,255,1)',
-            font=dict(
-                family="Arial, sans-serif",
-                size=12,
-                color="black"
+        # Check if pivot data is empty
+        if pivot_data.empty:
+            logger.warning("Empty pivot data provided for heatmap.")
+
+            # Return an empty figure with a message
+            fig = go.Figure()
+            fig.add_annotation(
+                text="No data available for heatmap visualization.",
+                x=0.5,
+                y=0.5,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=16, color="black")
             )
-        )
+            fig.update_layout(title=title, height=600)
+            return fig
         
-        # Update xaxis properties to handle long text
-        fig.update_xaxes(
-            tickangle=45,
-            title_font=dict(size=14),
-            title_standoff=25
-        )
+        # Check for all zero values
+        if (pivot_data == 0).all().all():
+            logger.warning("All values in pivot data are zero for heatmap.")
+
+            # Return an empty figure with a message
+            fig = go.Figure()
+            fig.add_annotation(
+                text="No data available for heatmap visualization.",
+                x=0.5,
+                y=0.5,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                font=dict(size=16, color="black")
+            )
+            fig.update_layout(title=title, height=600)
+            return fig
+
+        try:
+            # Use default colorscale if not specified
+            if colorscale is None:
+                colorscale = HEATMAP_COLORSCALE_WON
+                
+            # Create heatmap
+            fig = px.imshow(
+                pivot_data,
+                labels=dict(x="LOI Bin", y="IR Bin", color="Avg CPI ($)"),
+                x=pivot_data.columns,
+                y=pivot_data.index,
+                title=title,
+                color_continuous_scale=colorscale,
+                aspect="auto",
+                text_auto='.2f'  # Show values on cells
+            )
+            
+            # Update layout
+            fig.update_layout(
+                height=600,
+                coloraxis_colorbar=dict(
+                    title="Avg CPI ($)",
+                    tickprefix="$",
+                    len=0.75
+                ),
+                # Improved accessibility
+                plot_bgcolor='rgba(255,255,255,1)',
+                paper_bgcolor='rgba(255,255,255,1)',
+                font=dict(
+                    family="Arial, sans-serif",
+                    size=12,
+                    color="black"
+                )
+            )
+            
+            # Update xaxis properties to handle long text
+            fig.update_xaxes(
+                tickangle=45,
+                title_font=dict(size=14),
+                title_standoff=25
+            )
+            
+            # Update yaxis properties
+            fig.update_yaxes(
+                title_font=dict(size=14),
+                title_standoff=25
+            )
+            
+            # Add a hover template for better interaction
+            fig.update_traces(
+                hovertemplate="IR Bin: %{y}<br>LOI Bin: %{x}<br>Avg CPI: $%{z:.2f}<extra></extra>"
+            )
+            
+            return fig
         
-        # Update yaxis properties
-        fig.update_yaxes(
-            title_font=dict(size=14),
-            title_standoff=25
-        )
-        
-        # Add a hover template for better interaction
-        fig.update_traces(
-            hovertemplate="IR Bin: %{y}<br>LOI Bin: %{x}<br>Avg CPI: $%{z:.2f}<extra></extra>"
-        )
-        
-        return fig
+        except Exception as e:
+            logger.error(f"Error creating heatmap figure: {e}", exc_info=True)
+            # Return empty figure
+            return go.Figure()
     
     except Exception as e:
         logger.error(f"Error in create_heatmap: {e}", exc_info=True)
-        # Return empty figure
-        return go.Figure()
+        # Return a simple empty figure with error message
+        fig = go.Figure()
+        fig.add_annotation(
+            text=f"Error creating heatmap: {str(e)}",
+            x=0.5, y=0.5,
+            xref="paper", yref="paper",
+            showarrow=False,
+            font=dict(color="red", size=14)
+        )
+        fig.update_layout(title=title)
+        return fig
 
 def create_feature_importance_chart(feature_importance: pd.DataFrame) -> go.Figure:
     """
@@ -785,7 +837,7 @@ def create_prediction_comparison_chart(predictions: dict, won_avg: float, lost_a
             yaxis=dict(
                 gridcolor='rgba(0,0,0,0.1)',
                 gridwidth=1,
-                tickprefix='
+                tickprefix='', # Add dollar sign to y-axis
             )
         )
         
@@ -926,7 +978,7 @@ def create_cpi_efficiency_chart(won_data: pd.DataFrame, lost_data: pd.DataFrame)
             yaxis=dict(
                 gridcolor='rgba(0,0,0,0.1)',
                 gridwidth=1,
-                tickprefix='
+                tickprefix='',  # Add dollar sign to y-axis
             ),
             xaxis=dict(
                 gridcolor='rgba(0,0,0,0.1)',
@@ -976,6 +1028,19 @@ if __name__ == "__main__":
                              'Medium (101-500)', 'Small (1-100)']
         })
         
+        lost_data = pd.DataFrame({
+            'CPI': [12.3, 15.2, 14.1, 13.5, 16.8],
+            'IR': [35, 15, 40, 30, 25],
+            'LOI': [15, 20, 18, 12, 25],
+            'Completes': [300, 200, 250, 400, 150],
+            'Type': ['Lost'] * 5,
+            'IR_Bin': ['30-40', '10-20', '30-40', '20-30', '20-30'],
+            'LOI_Bin': ['Medium (11-15 min)', 'Long (16-20 min)', 'Long (16-20 min)', 
+                       'Short (6-10 min)', 'Very Long (20+ min)'],
+            'Completes_Bin': ['Medium (101-500)', 'Small (1-100)', 'Small (1-100)', 
+                             'Medium (101-500)', 'Small (1-100)']
+        })
+
         # Calculate efficiency metric
         won_data['CPI_Efficiency'] = (won_data['IR'] / 100) * (1 / won_data['LOI']) * won_data['Completes']
         lost_data['CPI_Efficiency'] = (lost_data['IR'] / 100) * (1 / lost_data['LOI']) * lost_data['Completes']
@@ -1043,17 +1108,3 @@ if __name__ == "__main__":
         
     except Exception as e:
         print(f"Error testing visualizations: {e}")
-': ['Medium (101-500)', 'Large (501-1000)', 'Large (501-1000)', 
-                             'Medium (101-500)', 'Large (501-1000)']
-        })
-        
-        lost_data = pd.DataFrame({
-            'CPI': [12.3, 15.2, 14.1, 13.5, 16.8],
-            'IR': [35, 15, 40, 30, 25],
-            'LOI': [15, 20, 18, 12, 25],
-            'Completes': [300, 200, 250, 400, 150],
-            'Type': ['Lost'] * 5,
-            'IR_Bin': ['30-40', '10-20', '30-40', '20-30', '20-30'],
-            'LOI_Bin': ['Medium (11-15 min)', 'Long (16-20 min)', 'Long (16-20 min)', 
-                       'Short (6-10 min)', 'Very Long (20+ min)'],
-            'Completes_Bin

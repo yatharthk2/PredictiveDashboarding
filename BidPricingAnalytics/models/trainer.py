@@ -144,7 +144,7 @@ def build_models_default(X_train: pd.DataFrame, y_train: pd.Series,
     
     # Basic models to train
     models = {
-        'Linear Regression': LinearRegression(),
+        'Ridge Regression': Ridge(alpha=1.0, random_state=42),
         'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42),
         'Gradient Boosting': GradientBoostingRegressor(n_estimators=100, random_state=42)
     }
@@ -324,7 +324,7 @@ def cross_validate_models(X: pd.DataFrame, y: pd.Series,
         
         # Basic models to evaluate
         models = {
-            'Linear Regression': LinearRegression(),
+            'Ridge Regression': Ridge(alpha=1.0, random_state=42),
             'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42),
             'Gradient Boosting': GradientBoostingRegressor(n_estimators=100, random_state=42)
         }

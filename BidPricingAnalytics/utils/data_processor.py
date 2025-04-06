@@ -175,46 +175,94 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def prepare_model_data(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
     """
-    Prepare data for modeling by creating feature matrix and target variable.
-    
-    Args:
-        df (pd.DataFrame): Input dataframe with engineered features
-    
-    Returns:
-        Tuple[pd.DataFrame, pd.Series]: X (features) and y (target) for modeling
+    Prepare data for modeling with improved error handling tailored to CPI data.
     """
     try:
-        # Drop rows with any missing values
-        df = df.dropna()
+        logger.info("Starting data preparation for modeling")
         
-        # Basic features
+        # Make a copy to avoid modifying the original
+        df = df.copy()
+        
+        # Validate required columns exist
+        required_cols = ['IR', 'LOI', 'Completes', 'CPI', 'Type']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        
+        if missing_cols:
+            logger.error(f"Missing required columns: {', '.join(missing_cols)}")
+            return pd.DataFrame(), pd.Series()
+        
+        # Handle missing values
+        numeric_cols = ['IR', 'LOI', 'Completes', 'CPI']
+        for col in numeric_cols:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+            na_count = df[col].isna().sum()
+            if na_count > 0:
+                median_val = df[col].median()
+                df[col] = df[col].fillna(median_val)
+                logger.warning(f"Column {col}: Replaced {na_count} NaN values with median {median_val:.2f}")
+            if col in ['LOI', 'Completes'] and (df[col] == 0).any():
+                min_non_zero = df[df[col] > 0][col].min()
+                df.loc[df[col] == 0, col] = min_non_zero
+                logger.warning(f"Column {col}: Replaced zero values with minimum non-zero value {min_non_zero}")
+        
+        # Create engineered features specific to CPI analysis
+        try:
+            df['IR_LOI_Ratio'] = df['IR'] / df['LOI']
+            df['IR_Completes_Ratio'] = df['IR'] / df['Completes']
+            df['LOI_Completes_Ratio'] = df['LOI'] / df['Completes']
+            df['IR_LOI_Product'] = df['IR'] * df['LOI']
+            df['Log_Completes'] = np.log1p(df['Completes'])
+            
+            if 'IR_Bin' not in df.columns:
+                from utils.data_processor import create_ir_bins
+                df = create_ir_bins(df)
+                
+            logger.info("Successfully created engineered features")
+        except Exception as e:
+            logger.warning(f"Error in feature engineering: {e}")
+        
         feature_cols = [
-            'IR', 'LOI', 'Completes', 
-            'IR_LOI_Ratio', 'IR_Completes_Ratio', 
-            'LOI_Completes_Ratio', 'IR_LOI_Product',
-            'Log_Completes', 'Type'
+            'IR', 'LOI', 'Completes', 'IR_LOI_Ratio', 
+            'IR_Completes_Ratio', 'Log_Completes', 'Type'
         ]
-        
-        # Make sure all needed columns exist
         available_cols = [col for col in feature_cols if col in df.columns]
         
-        # Prepare feature matrix and target variable
+        if 'Type' in available_cols:
+            valid_types = ['Won', 'Lost']
+            invalid_types = df[~df['Type'].isin(valid_types)]['Type'].unique()
+            if len(invalid_types) > 0:
+                logger.warning(f"Found invalid Type values: {invalid_types}. Removing these rows.")
+                df = df[df['Type'].isin(valid_types)]
+            df = pd.get_dummies(df, columns=['Type'], drop_first=True)
+            if 'Type_Won' in df.columns:
+                available_cols = [col for col in available_cols if col != 'Type'] + ['Type_Won']
+        
+        if 'Segment' in df.columns and df['Segment'].notna().any():
+            logger.info("Client segment data found, adding to model features")
+            df = pd.get_dummies(df, columns=['Segment'], drop_first=True)
+            segment_cols = [col for col in df.columns if col.startswith('Segment_')]
+            available_cols.extend(segment_cols)
+        
         X = df[available_cols].copy()
         y = df['CPI']
         
-        # Create dummy variables for categorical features
-        if 'Type' in X.columns:
-            X = pd.get_dummies(X, columns=['Type'], drop_first=True)
+        mask = X.notna().all(axis=1) & y.notna()
+        X = X[mask]
+        y = y[mask]
         
-        if 'Segment' in df.columns:
-            X = pd.get_dummies(X, columns=['Segment'], drop_first=True)
+        if len(X) < 10:
+            logger.error(f"Too few samples after preprocessing: {len(X)}")
+            return pd.DataFrame(), pd.Series()
+        
+        logger.info(f"Data preparation successful. X shape: {X.shape}, y shape: {y.shape}")
+        logger.info(f"Features used: {', '.join(X.columns)}")
         
         return X, y
-    
+        
     except Exception as e:
         logger.error(f"Error in prepare_model_data: {e}", exc_info=True)
-        # Return empty dataframes if preparation fails
         return pd.DataFrame(), pd.Series()
+
 
 def get_data_summary(df: pd.DataFrame) -> Dict[str, Dict[str, float]]:
     """
