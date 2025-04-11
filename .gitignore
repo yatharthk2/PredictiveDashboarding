@@ -26,3 +26,11 @@ Thumbs.db
 
 # Jupyter notebook checkpoints
 .ipynb_checkpoints/
+
+# Ignore data files (optional)
+data/*.xlsx
+data/*.csv
+
+# Ignore model outputs
+models/saved_models/
+
