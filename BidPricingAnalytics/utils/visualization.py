@@ -18,6 +18,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import logging
+
+# Add these imports for robust trend lines
+from sklearn.linear_model import RANSACRegressor
+from sklearn.preprocessing import StandardScaler
 from typing import Dict, List, Optional, Union, Tuple
 
 # Configure logging

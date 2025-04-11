@@ -11,7 +11,9 @@ from .data_processor import (
     create_completes_bins,
     engineer_features,
     prepare_model_data,
-    get_data_summary
+    get_data_summary,
+    handle_outliers,
+    detect_data_issues
 )
 from .visualization import (
     create_type_distribution_chart,
@@ -34,6 +36,8 @@ __all__ = [
     'engineer_features',
     'prepare_model_data',
     'get_data_summary',
+    'handle_outliers',
+    'detect_data_issues',
     'create_type_distribution_chart',
     'create_cpi_distribution_boxplot',
     'create_cpi_histogram_comparison',
