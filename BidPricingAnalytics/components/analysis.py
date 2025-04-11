@@ -657,6 +657,9 @@ def show_analysis(won_data: pd.DataFrame, lost_data: pd.DataFrame, combined_data
                             st.plotly_chart(fig, use_container_width=True, key='heatmap_diff_simple')
                         except Exception as e2:
                             st.error("Could not create differential heatmap with either method. Please check your data.")
+            except Exception as e:
+                st.error(f"Error creating heatmap analysis: {str(e)}")
+                logger.error(f"Error in heatmap analysis: {e}", exc_info=True)
             
             # Add interpretation
             with st.expander("📊 Interpretation"):
